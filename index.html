@@ -45,6 +45,11 @@ footer{max-width:1250px;margin:0 auto;padding:0 18px 20px;color:var(--muted);fon
 <button class="btn" id="musicToggle" disabled>Play music</button>
 <p class="note">Bass gently pushes the journey forward. Mids and highs add subtle light pulses.</p>
 <div class="divider"></div>
+<h2>Record your journey</h2>
+<button class="btn primary" id="recordBtn">● Start recording</button>
+<div class="track" id="recordStatus">Ready to record</div>
+<p class="note" id="recordFormat">Exports MP4 when your browser supports MP4 recording. Otherwise it saves a compatible WebM file.</p>
+<div class="divider"></div>
 <h2>Visual quality</h2>
 <p class="note">Optimised for smoother playback: 30 FPS, reduced-resolution canvas, simple shapes and limited effects.</p>
 </aside>
@@ -63,7 +68,7 @@ const scenes=[
  ['A CLOSER LOOK','LIFE IN A DIFFERENT KIND OF WORLD']
 ];
 let W=0,H=0,dpr=1,stage=0,progress=0,elapsed=0,last=0,running=true,speed=32,frame=0,stars=[];
-let audio=null,audioCtx=null,analyser=null,freq=null,level=0,trackURL=null;
+let audio=null,audioCtx=null,analyser=null,freq=null,level=0,trackURL=null,audioDestination=null,recorder=null,recordChunks=[];
 const set=(id,v)=>$(id).textContent=v;
 function resize(){const r=canvas.getBoundingClientRect();W=r.width;H=r.height;dpr=Math.min(1,(devicePixelRatio||1)*.62);canvas.width=Math.max(1,Math.round(W*dpr));canvas.height=Math.max(1,Math.round(H*dpr));ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);stars=Array.from({length:65},(_,i)=>({x:(i*173.3%997)/997*W,y:(i*317.7%991)/991*H,r:.5+(i%3)*.35,a:.2+(i%5)*.09}));draw()}
 function bg(top='#081326',bottom='#102a37'){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,top);g.addColorStop(1,bottom);ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
@@ -87,7 +92,20 @@ $('pause').addEventListener('click',()=>{running=!running;last=0;$('pause').text
 $('skip').addEventListener('click',jump);
 $('speed').addEventListener('input',e=>{speed=+e.target.value;set('speedOut',speed)});
 $('music').addEventListener('change',e=>{const file=e.target.files&&e.target.files[0];if(!file)return;if(trackURL)URL.revokeObjectURL(trackURL);trackURL=URL.createObjectURL(file);if(audio)audio.pause();audio=new Audio(trackURL);audio.loop=true;set('trackName',file.name);$('musicToggle').disabled=false;$('musicToggle').textContent='Play music';audio.addEventListener('ended',()=>{$('musicToggle').textContent='Play music'})});
-$('musicToggle').addEventListener('click',async()=>{if(!audio)return;if(audio.paused){const AC=window.AudioContext||window.webkitAudioContext;if(!audioCtx){audioCtx=new AC();const src=audioCtx.createMediaElementSource(audio);analyser=audioCtx.createAnalyser();analyser.fftSize=256;freq=new Uint8Array(analyser.frequencyBinCount);src.connect(analyser);analyser.connect(audioCtx.destination)}if(audioCtx.state==='suspended')await audioCtx.resume();await audio.play();$('musicToggle').textContent='Pause music'}else{audio.pause();$('musicToggle').textContent='Play music'}});
+function ensureAudioGraph(){const AC=window.AudioContext||window.webkitAudioContext;if(!audioCtx){audioCtx=new AC();const src=audioCtx.createMediaElementSource(audio);analyser=audioCtx.createAnalyser();analyser.fftSize=256;freq=new Uint8Array(analyser.frequencyBinCount);audioDestination=audioCtx.createMediaStreamDestination();src.connect(analyser);analyser.connect(audioCtx.destination);analyser.connect(audioDestination)}return audioCtx}
+$('musicToggle').addEventListener('click',async()=>{if(!audio)return;if(audio.paused){const ac=ensureAudioGraph();if(ac.state==='suspended')await ac.resume();await audio.play();$('musicToggle').textContent='Pause music'}else{audio.pause();$('musicToggle').textContent='Play music'}});
+function supportedRecordingType(){const types=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];return types.find(t=>MediaRecorder.isTypeSupported(t))||''}
+$('recordBtn').addEventListener('click',async()=>{const btn=$('recordBtn');if(recorder&&recorder.state==='recording'){recorder.stop();btn.disabled=true;btn.textContent='Finishing…';return}
+if(!('MediaRecorder'in window)||!canvas.captureStream){set('recordStatus','Recording is not supported in this browser.');return}
+try{const mime=supportedRecordingType();if(!mime){set('recordStatus','This browser does not support video recording.');return}
+const videoStream=canvas.captureStream(30),tracks=[...videoStream.getVideoTracks()];if(audio){const ac=ensureAudioGraph();if(ac.state==='suspended')await ac.resume();if(audio.paused){await audio.play();$('musicToggle').textContent='Pause music'}if(audioDestination)tracks.push(...audioDestination.stream.getAudioTracks())}
+const stream=new MediaStream(tracks);recordChunks=[];recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:5000000,audioBitsPerSecond:192000});
+recorder.ondataavailable=e=>{if(e.data&&e.data.size)recordChunks.push(e.data)};
+recorder.onerror=()=>{set('recordStatus','Recording error. Please try again.');btn.disabled=false;btn.textContent='● Start recording'};
+recorder.onstop=()=>{const type=recorder.mimeType||mime,ext=type.includes('mp4')?'mp4':'webm',blob=new Blob(recordChunks,{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='visual-lab-'+new Date().toISOString().replace(/[:.]/g,'-')+'.'+ext;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);videoStream.getTracks().forEach(t=>t.stop());set('recordStatus','Saved recording as '+ext.toUpperCase());btn.disabled=false;btn.textContent='● Start recording';};
+recorder.start(1000);btn.textContent='■ Stop & save recording';set('recordStatus','Recording journey'+(audio?' with soundtrack':' without soundtrack')+'…');set('recordFormat','Recording format: '+(mime.includes('mp4')?'MP4':'WebM (your browser does not offer MP4 recording)'));
+}catch(err){set('recordStatus','Could not start recording: '+err.message);btn.disabled=false;btn.textContent='● Start recording'}
+});
 document.addEventListener('visibilitychange',()=>{last=0});window.addEventListener('resize',resize);resize();requestAnimationFrame(loop);
 })();
 </script>
