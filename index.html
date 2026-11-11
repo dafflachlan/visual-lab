@@ -30,7 +30,7 @@ footer{max-width:1250px;margin:0 auto;padding:0 18px 20px;color:var(--muted);fon
 <main>
 <section class="stage">
 <div class="stagehead"><strong id="sceneTitle">APPROACHING A LIVING WORLD</strong><span>ENDLESS DESCENT / 30 FPS</span></div>
-<div class="canvaswrap"><canvas id="world"></canvas><div class="scene-label" id="sceneLabel">SOMEWHERE BEYOND THE STARS</div></div>
+<div class="canvaswrap"><canvas id="world"></canvas></div>
 <p class="note">A continuous flight from outer space into oceans, beaches, towns and strange little worlds. Each descent leads to another place.</p>
 </section>
 <aside class="controls">
@@ -121,9 +121,9 @@ function draw(){
  ctx.save();
  const scale=1+p*.27; // Keep the slower, more spacious zoom
  ctx.translate(W*.5,H*.5);ctx.scale(scale,scale);ctx.translate(-W*.5,-H*.5);
- painter();drawEnvironmentalDetail();drawAmbientBlend();ctx.restore();
+ painter();drawEnvironmentalDetail();drawAnimatedWorldElements();drawAmbientBlend();ctx.restore();
  ctx.fillStyle='rgba(5,8,17,.06)';ctx.fillRect(0,0,W,H);
- set('sceneTitle',scenes[stage][0]);set('sceneLabel',scenes[stage][1]);
+ set('sceneTitle',scenes[stage][0]);
 }
 function drawEnvironmentalDetail(){
  // Small moving details give each environment depth without reacting to the soundtrack.
@@ -157,6 +157,54 @@ function drawEnvironmentalDetail(){
   if(stage>=4){for(let i=0;i<12;i++){const x=W*(.04+i*.083),y=H*(.83+(i%3)*.025);ctx.fillStyle='#385e49';ctx.fillRect(x,y,2,13);ctx.strokeStyle='#a68c6c';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x-5,y+3);ctx.lineTo(x+7,y+3);ctx.moveTo(x-5,y+8);ctx.lineTo(x+7,y+8);ctx.stroke()}}
  }
 }
+
+function drawAnimatedWorldElements(){
+ // Extra moving life in every phase: separate silhouettes and particles give each world its own rhythm.
+ const t=elapsed, S=Math.min(W,H);
+ if(stage===0){
+  // Two closer orbital craft, each with a faint moving engine trail.
+  for(let i=0;i<2;i++){
+   const a=t*(.19+i*.07)+i*3.1,rx=W*(.34+i*.08),ry=H*(.18+i*.07),x=W*.5+Math.cos(a)*rx,y=H*.53+Math.sin(a)*ry;
+   ctx.save();ctx.translate(x,y);ctx.rotate(a+.7);
+   ctx.fillStyle='#d8e1df';ctx.fillRect(-7,-3,14,6);ctx.fillStyle='#8ba8b5';ctx.fillRect(-15,-5,7,10);ctx.fillRect(8,-5,7,10);
+   ctx.strokeStyle='rgba(164,221,235,.38)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-17,0);ctx.lineTo(-29,0);ctx.stroke();ctx.restore();
+  }
+  for(let i=0;i<5;i++){const x=(i*197+t*9)%W,y=H*(.08+(i%4)*.2);ctx.strokeStyle='rgba(220,232,255,.32)';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+12,y-3);ctx.stroke()}
+ }else if(stage===1){
+  // Slow cloud banks slide over the mountain ranges; birds cross the valley.
+  for(let i=0;i<5;i++){const x=((i*W*.27+t*(5+i))%(W+150))-75,y=H*(.13+(i%3)*.09);cloud(x,y,18+i*4,'rgba(236,222,198,.13)')}
+  for(let i=0;i<4;i++){const x=((t*24+i*W*.31)%(W+40))-20,y=H*(.3+(i%3)*.055);ctx.strokeStyle='rgba(35,48,45,.75)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x-5,y);ctx.quadraticCurveTo(x,y-5,x+3,y);ctx.quadraticCurveTo(x+8,y-5,x+12,y);ctx.stroke()}
+  // River glints move downstream.
+  for(let i=0;i<14;i++){const p=(i/14+t*.13)%1,x=W*(.31+p*.18),y=H*(.37+p*.42);ctx.fillStyle='rgba(221,245,218,.65)';ctx.fillRect(x+Math.sin(i*3)*5,y,3,1)}
+ }else if(stage===2){
+  // Distinct fish shoals, drifting jellyfish and a richer moving underwater floor.
+  for(let shoal=0;shoal<3;shoal++){const x0=((t*(13+shoal*4)+shoal*W*.39)%(W+100))-50,y0=H*(.32+shoal*.16);for(let j=0;j<7;j++){const x=x0-j*12,y=y0+Math.sin(t*1.4+j*.8+shoal)*8;ctx.fillStyle=['#e6b77f','#9fd0bd','#d98f82'][shoal];ctx.beginPath();ctx.moveTo(x+6,y);ctx.lineTo(x-3,y-3);ctx.lineTo(x-2,y+3);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(x-3,y);ctx.lineTo(x-8,y-4);ctx.lineTo(x-8,y+4);ctx.closePath();ctx.fill()}}
+  for(let i=0;i<3;i++){const x=W*(.18+i*.31)+Math.sin(t*.35+i)*18,y=H*(.32+i*.13)+Math.cos(t*.55+i)*10;ctx.strokeStyle='rgba(188,220,213,.42)';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(x,y+12);ctx.quadraticCurveTo(x-10,y+2,x,y-7);ctx.quadraticCurveTo(x+10,y+2,x,y+12);ctx.stroke();for(let k=0;k<4;k++){ctx.beginPath();ctx.moveTo(x-5+k*3,y+10);ctx.lineTo(x-7+k*4,y+17+Math.sin(t*2+k)*3);ctx.stroke()}}
+  for(let i=0;i<9;i++){const x=W*(.08+i*.105),y=H*.91;ctx.strokeStyle='rgba(102,177,147,.7)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+Math.sin(t+i)*12,y-25,x+Math.sin(t*.7+i)*16,y-55-(i%3)*8);ctx.stroke()}
+ }else if(stage===3){
+  // Rolling shore break with moving foam fingers, seabirds and a gentle palm sway.
+  for(let i=0;i<3;i++){const y=H*(.42+i*.045)+Math.sin(t*1.1+i)*9;ctx.strokeStyle='rgba(241,252,231,.55)';ctx.lineWidth=2.5;ctx.beginPath();for(let x=0;x<=W;x+=16){const yy=y+Math.sin(x*.025+t*1.8+i)*4;if(x===0)ctx.moveTo(x,yy);else ctx.lineTo(x,yy)}ctx.stroke()}
+  for(let i=0;i<5;i++){const x=((t*17+i*W*.24)%(W+30))-15,y=H*(.19+(i%3)*.06);ctx.strokeStyle='rgba(57,61,59,.65)';ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(x,y,5,Math.PI*1.1,Math.PI*1.9);ctx.arc(x+9,y,5,Math.PI*1.1,Math.PI*1.9);ctx.stroke()}
+  for(let i=0;i<4;i++){const x=W*(.12+i*.24),base=H*(.69+(i%2)*.08);ctx.strokeStyle='rgba(66,105,75,.85)';ctx.lineWidth=2;for(let j=0;j<4;j++){const a=Math.PI+j*.43+Math.sin(t*1.5+i)*.16;ctx.beginPath();ctx.moveTo(x,base);ctx.quadraticCurveTo(x+Math.cos(a)*18,base-25,x+Math.cos(a)*35,base-33+Math.sin(a)*13);ctx.stroke()}}
+ }else if(stage===4){
+  // A little town in motion: bicycles/cars on the road, chimney smoke and garden movement.
+  const roadY=H*.84;for(let i=0;i<2;i++){const x=((t*(18+i*8)+i*W*.62)%(W+70))-35,y=roadY+i*9;ctx.fillStyle=i?'#b7c3bb':'#d8b18a';ctx.fillRect(x,y-5,27,8);ctx.fillStyle='#38434a';ctx.beginPath();ctx.arc(x+6,y+4,3,0,7);ctx.arc(x+21,y+4,3,0,7);ctx.fill()}
+  for(let i=0;i<4;i++){const x=W*(.12+i*.24),y=H*(.39+(i%2)*.05);for(let j=0;j<3;j++){const p=(t*.08+j*.3+i*.13)%1;ctx.fillStyle='rgba(235,226,211,'+(0.18*(1-p))+')';ctx.beginPath();ctx.arc(x+Math.sin(t+i+j)*4,y-p*25,3+p*4,0,7);ctx.fill()}}
+  for(let i=0;i<8;i++){const x=W*(.04+i*.13),y=H*.94;ctx.strokeStyle='rgba(173,190,123,.75)';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+Math.sin(t*1.7+i)*5,y-8,x+Math.sin(t*1.7+i)*8,y-15);ctx.stroke()}
+ }else if(stage===5){
+  // Neighbourhood characters stroll, wave and interact with their surroundings.
+  for(let i=0;i<7;i++){const x=W*(.08+i*.13)+Math.sin(t*.55+i)*7,y=H*(.87+(i%2)*.02);const s=S*(.085+(i%3)*.009);person(x,y,s,['#d47e68','#7190a1','#d2c18f'][i%3],i===2||i===5)}
+  for(let i=0;i<5;i++){const x=((t*20+i*W*.25)%(W+25))-12,y=H*(.17+i*.07);ctx.strokeStyle='rgba(39,47,51,.7)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,5,Math.PI*1.1,Math.PI*1.9);ctx.arc(x+9,y,5,Math.PI*1.1,Math.PI*1.9);ctx.stroke()}
+  for(let i=0;i<4;i++){const x=W*(.16+i*.23),y=H*.48;ctx.fillStyle='rgba(244,211,158,.7)';ctx.beginPath();ctx.arc(x,y+Math.sin(t*2+i)*2,2.2,0,7);ctx.fill()}
+ }else{
+  // Close-up domestic life: shifting window light, curtains and a softly blinking alien.
+  const glow=.45+.2*Math.sin(t*1.3);ctx.fillStyle='rgba(255,205,139,'+glow*.22+')';ctx.fillRect(W*.405,H*.495,W*.19,H*.19);
+  ctx.strokeStyle='rgba(244,211,173,.55)';ctx.lineWidth=2;const sway=Math.sin(t*1.1)*4;ctx.beginPath();ctx.moveTo(W*.405,H*.495);ctx.quadraticCurveTo(W*.43+sway/100,H*.59,W*.43,H*.685);ctx.moveTo(W*.595,H*.495);ctx.quadraticCurveTo(W*.57-sway/100,H*.59,W*.57,H*.685);ctx.stroke();
+  const blink=(Math.sin(t*.7+1.4)>.985);if(blink){ctx.strokeStyle='#243c3d';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W*.554,H*.58);ctx.lineTo(W*.564,H*.58);ctx.stroke()}
+  for(let i=0;i<8;i++){const x=W*(.12+i*.11),y=H*(.16+(i%3)*.07);ctx.fillStyle='rgba(244,214,176,.22)';ctx.beginPath();ctx.arc(x+Math.sin(t*.4+i)*3,y,1.5,0,7);ctx.fill()}
+ }
+}
+
 function drawAmbientBlend(){
  // Slow, broad colour veils blend the palette together without hiding the scene details.
  const palettes=[
